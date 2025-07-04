@@ -1,0 +1,4 @@
+#ignora pasta do node
+node_modules
+#ignora dotenv
+.env
