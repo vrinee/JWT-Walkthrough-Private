@@ -1,1 +1,0 @@
-//fazer implementação do jwt conversando com o server.js
