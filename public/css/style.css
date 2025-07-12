@@ -1,1 +1,60 @@
-/*fazer estilo da página ou usar um boilerplate*/
+/* JWT Walkthrough - Main Page Styles */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.safe-link {
+    display: block;
+    transition: transform 0.3s ease, filter 0.3s ease;
+    cursor: pointer;
+}
+
+
+
+.safe-image {
+    width: 400px;
+    height: auto;
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 15px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+}
+
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .safe-image {
+        width: 300px;
+    }
+}
+
+@media (max-width: 480px) {
+    .safe-image {
+        width: 250px;
+    }
+    
+    .container {
+        padding: 10px;
+    }
+}
