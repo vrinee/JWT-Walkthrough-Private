@@ -1,24 +1,32 @@
-//server.js arquivo inicial da aplicação
+// server.js arquivo inicial da aplicação
+// definições iniciais e configuração do servidor
 require('dotenv').config()
-//init da aplicação
-var express = require("express");
-var app = express();
-var jwt = require('jsonwebtoken');
-mongoose = require('mongoose');
-const ValidateToken = (req, res, next) => {
-    const header = req.headers['authorization'];
-    //Check if header is undefined
-    if(typeof header !== 'undefined') {
-        const bearer = header.split(' ');
-        const token = bearer[1];
+const express = require('express');
+const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
+const cors = require('cors');
+const path = require('path');
 
-        req.token = token;
+// Middleware para validação de token JWT
+// Verifica se o token está presente no header Authorization
+const ValidarToken = (req, res, next) => {
+    try {
+        const token = req.headers.authorization.split(' ');
+        if (!token || token.length !== 2 || token[0] !== 'Bearer') {
+            return res.status(401).json({ message: 'Token inválido ou não fornecido!' });
+        }
+        const decodedToken = jwt.verify(token[1], process.env.JWT_SECRET);
+        console.log("Token decodificado:", decodedToken);
+        req.user = { valid: true, userName: decodedToken.user.username, safeUrl: decodedToken.user.safeFile  };  // Adiciona informações do usuário ao objeto de requisição
         next();
-    } else {
-        //If header is undefined return Forbidden (403)
-        res.sendStatus(403)
+    } catch (error) {
+        res.status(401).json({ message: 'Autenticação falhou!' });
     }
 };
+
+
+var app = express();
+
 // configura o mongoose e user
 mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 const userSchema = new mongoose.Schema({
@@ -30,50 +38,56 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    safeUrl: {
+    safeFile: {
         type: String,
         required: false
     }
 });
+
 const User = mongoose.model('User', userSchema);
 
 const arrayOfUsers = [{
     username: "Fulano",
     password: "1234",
-    safeUrl: "CatVideo.mp4"
+    safeFile: "CatVideo.mp4"
 },
 {    username: "Ciclano",
     password: "5678",
-    safeUrl: "CatVideo.mp4"
-},{    username: "Beltrano",
+    safeFile: "CatVideo.mp4"
+},{    
+    username: "Beltrano",
     password: "91011",
-    safeUrl: "CatVideo.mp4"
+    safeFile: "CatVideo.mp4"
 }];
-//inseri os usuários no banco
+
+// inserir os usuários no banco
 User.insertMany(arrayOfUsers).then(function(){
     console.log("Usuários inseridos")
 }).catch(function(error){
     console.log(error)
 });
 
+// Configura o CORS para permitir requisições de qualquer origem
+app.use(cors());
 
-
-//instancia os arquivos staticos
+// instancia os arquivos estaticos publicos
 app.use(express.static('public'));
 
-//middleware para parsing do JSON
+// middleware para parsing do JSON
 app.use(express.json());
 
-//serve o index no caminho 
+// serve a página inicial no caminho 'root'
 app.get("/",(req,res)=>{
     res.sendFile(__dirname + "/views/index.html");
 });
 
-//serve o login no caminho /login e faz o post do login
+// serve a página de login no caminho /login via GET (navegador)
 app.get("/login",(req,res)=>{
     res.sendFile(__dirname + "/views/login.html");
 });
 
+// API POST para login
+// Recebe username e password, valida e retorna um token JWT
 app.post("/login",(req,res)=>{
     const {body} = req;
     const {username,password} = body;
@@ -84,53 +98,35 @@ app.post("/login",(req,res)=>{
 
 });
 
-//serve o safe no caminho /safe e valida o token
-app.get("/safe",(req,res)=>{
-    // Just serve the safe.html page, let client-side JS handle token validation
+// serve a página safe no caminho /safe (sem verificar autenticação)
+// reverificação de autenticação para abrir o cofre é feita no front-end
+app.get("/safe", (req,res)=>{
     res.sendFile(__dirname + "/views/safe.html");
 });
 
-//API endpoint to validate token
-app.get("/api/validate-token", ValidateToken, (req,res)=>{
-    jwt.verify(req.token, process.env.JWT_SECRET, (err, authData) => {
-        if(err) {
-            res.status(403).json({valid: false, message: "Invalid token"});
-        } else {
-            res.json({valid: true, user: authData.user, safeUrl: authData.user.safeUrl});
+// API GET para pegar o arquivo seguro
+app.get("/api/safe-file/:videofile", (req, res) => {
+    const videofile = req.params.videofile;
+    const filePath = path.join(__dirname, 'safe-videos', videofile);
+    res.sendFile(filePath, (err) => {
+        if (err) {
+            console.error('Erro ao enviar o arquivo:', err);
+            if (!res.headersSent) {
+                res.status(404).json({ message: 'Arquivo não encontrado' });
+            }
         }
     });
 });
-
-
-//fazer as funções do jwt que serão usadas
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//listener da aplicação
+// API GET para validar o token JWT
+app.get("/api/validate-token", ValidarToken, (req,res)=>{
+    if(!req.user || !req.user.valid) {
+            res.status(403).json({valid: false, message: "Invalid token"});
+        } else {
+            console.log("Usuário autenticado:", req.user);
+            res.json(req.user);
+        }
+});
+// listener da aplicação
 const listener = app.listen(process.env.PORT || 3000, function () {
     console.log("Seu app esta no port " + listener.address().port);
   });
