@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 
 // Middleware para validação de token JWT
 // Verifica se o token está presente no header Authorization
@@ -17,7 +18,7 @@ const ValidarToken = (req, res, next) => {
         }
         const decodedToken = jwt.verify(token[1], process.env.JWT_SECRET);
         console.log("Token decodificado:", decodedToken);
-        req.user = { valid: true, userName: decodedToken.user.username, safeUrl: decodedToken.user.safeFile  };  // Adiciona informações do usuário ao objeto de requisição
+        req.user = { valid: true, userName: decodedToken.user.username, safeFile: decodedToken.user.safeFile  };  // Adiciona informações do usuário ao objeto de requisição
         next();
     } catch (error) {
         res.status(401).json({ message: 'Autenticação falhou!' });
@@ -61,11 +62,24 @@ const arrayOfUsers = [{
 }];
 
 // inserir os usuários no banco
-User.insertMany(arrayOfUsers).then(function(){
-    console.log("Usuários inseridos")
-}).catch(function(error){
-    console.log(error)
-});
+// Primeiro remove todos os usuários existentes, depois insere os novos
+async function initializeUsers() {
+    try {
+        // Delete all existing users
+        const deleteResult = await User.deleteMany({});
+        console.log(`${deleteResult.deletedCount} usuários removidos`);
+        
+        // Insert new users
+        const insertResult = await User.insertMany(arrayOfUsers);
+        console.log(`${insertResult.length} usuários inseridos`);
+    } catch (error) {
+        console.error("Erro ao inicializar usuários:", error);
+    }
+}
+
+// Execute the initialization
+initializeUsers();
+
 
 // Configura o CORS para permitir requisições de qualquer origem
 app.use(cors());
@@ -108,6 +122,7 @@ app.get("/safe", (req,res)=>{
 app.get("/api/safe-file/:videofile", (req, res) => {
     const videofile = req.params.videofile;
     const filePath = path.join(__dirname, 'safe-videos', videofile);
+    /*  Este é a opção mais simples, porém não é melhor para arquivos grandes
     res.sendFile(filePath, (err) => {
         if (err) {
             console.error('Erro ao enviar o arquivo:', err);
@@ -115,7 +130,13 @@ app.get("/api/safe-file/:videofile", (req, res) => {
                 res.status(404).json({ message: 'Arquivo não encontrado' });
             }
         }
+    });*/
+    const stat = fs.statSync(filePath); // aqui esta fazendo stream do arquivo
+    res.writeHead(200, {
+        'Content-Type': 'video/mp4',
+        'Content-Length': stat.size
     });
+    fs.createReadStream(filePath).pipe(res);
 });
 // API GET para validar o token JWT
 app.get("/api/validate-token", ValidarToken, (req,res)=>{
@@ -128,5 +149,5 @@ app.get("/api/validate-token", ValidarToken, (req,res)=>{
 });
 // listener da aplicação
 const listener = app.listen(process.env.PORT || 3000, function () {
-    console.log("Seu app esta no port " + listener.address().port);
+    console.log("Seu app esta no port " + '3000');
   });

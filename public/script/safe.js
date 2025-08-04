@@ -18,10 +18,16 @@ safeimgtag.addEventListener('click', function(e) {
         console.log("response: ", data);
         if (data.valid) { // todo o javascript de criação de página que use o caminho do video terá de ser feito neste if
             console.log('Token válido. Usuário:', data.userName);
-            let videoPath = data.safeUrl;  
+            let videoPath = data.safeFile;  
 			safeimgtag.remove(); // remover as tag com estilo css ou adequar o codigo para nao dar quebra de pagina no video tag
 			videotag.innerHTML = `<video id="videoPlayer" controls autoplay>  <source src="/api/safe-file/${videoPath}" type="video/mp4"></video>`; //exemplo do que fazer
-			localStorage.removeItem('token'); // remover o token apos exibir o video, opicional, faz o usuario ter de fazer login novamente
+			
+			// Remove token só depois de tocar
+			const videoPlayer = document.getElementById('videoPlayer');
+			videoPlayer.addEventListener('ended', function() {
+				console.log('Video finished playing, removing token');
+				localStorage.removeItem('token');
+			});
         } else {
             console.log('Token inválido. Redirecionando para login.');
             localStorage.removeItem('token');
